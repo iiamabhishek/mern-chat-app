@@ -3,7 +3,5 @@ kind: ConfigMap
 metadata:
   name: backend-config
 data:
-  MONGO_URI: ""
-  JWT_SECRET: ""
-  NODE_ENV: ""
+  NODE_ENV: "production"
   PORT: "5000"
