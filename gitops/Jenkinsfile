@@ -95,26 +95,20 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        script {
+                    script {
+                        def status = sh(
+                            script: 'terraform plan -detailed-exitcode -out=tfplan || true',
+                            returnStatus: true
+                        )
+                        echo "Terraform plan exit code: ${status}"
 
-                            // Run terraform plan and capture exit code
-                            def planStatus = sh(
-                                script: "terraform plan -detailed-exitcode -out=tfplan || exit \$?",
-                                returnStatus: true
-                            )
-                            echo "Terraform plan exit code: ${planStatus}"
-                            
-                            // Check the exit code of terraform plan
-                            if (planStatus == 2) {
-                                currentBuild.description = "Terraform: Changes Detected"
-                                env.TF_CHANGES = "true"
-                            } else if (planStatus == 0) {
-                                echo "✅ No infrastructure changes"
-                                env.TF_CHANGES = "false"
-                            } else {
-                                error "❌ Terraform plan failed"
-                            }
+                        if (status == 2) {
+                            env.TF_CHANGES = "true"
+                            currentBuild.description = "Terraform: Changes Detected"
+                        } else if (status == 0) {
+                            echo "✅ No infrastructure changes."
+                        } else {
+                            error "❌ Terraform plan failed with exit code ${status}"
                         }
                     }
                 }
@@ -128,13 +122,13 @@ pipeline {
             steps {
                 dir('terraform') {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        input message: "⚠️ Terraform changes detected. Proceed with apply?"
-                        sh 'terraform apply --auto-approve tfplan'
+                        input message: "⚠️ Changes detected. Proceed with apply?"
+                        sh 'terraform apply -auto-approve tfplan'
                     }
                 }
             }
         }
-
+        
         // stage('Post Apply Audit') {
         //     when {
         //         expression { env.TF_CHANGES == "true" }
