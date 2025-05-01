@@ -4,6 +4,7 @@ pipeline {
     environment {
         DOCKER_USER = 'iiamabhishek05'
         AWS_DEFAULT_REGION = 'ap-south-1'
+        TF_CHANGES = 'false'  // default
     }
 
     stages {
@@ -122,7 +123,7 @@ pipeline {
 
         stage('Terraform Apply') {
             when {
-                expression { env.TF_CHANGES == "true" }
+                expression { return env.TF_CHANGES == "true" }
             }
             steps {
                 dir('terraform') {
