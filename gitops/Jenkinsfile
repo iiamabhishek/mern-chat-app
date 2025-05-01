@@ -94,10 +94,7 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-creds'
-                    ]]) {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                         script {
                             def planStatus = sh(script: '''
                                 terraform plan -detailed-exitcode -out=tfplan || echo $? > plan_result
@@ -125,10 +122,7 @@ pipeline {
             }
             steps {
                 dir('terraform') {
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-creds'
-                    ]]) {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                         input message: "⚠️ Terraform changes detected. Proceed with apply?"
                         sh 'terraform apply -auto-approve tfplan'
                     }
@@ -159,10 +153,6 @@ pipeline {
                 }
             }
         }
-
-
-
-
 
         // stage('Backup Kubernetes Resources') {
         //     steps {
