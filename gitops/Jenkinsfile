@@ -97,10 +97,11 @@ pipeline {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                         script {
                             def planStatus = sh(script: '''
-                                terraform plan -detailed-exitcode -out=tfplan || echo $? > plan_result
-                                cat plan_result
+                                terraform plan -detailed-exitcode -out=tfplan
+                                echo $?
                             ''', returnStdout: true).trim()
-
+                            echo "Terraform plan exit code: ${planStatus}"
+                            // Check the exit code of terraform plan
                             if (planStatus == '2') {
                                 currentBuild.description = "Terraform: Changes Detected"
                                 env.TF_CHANGES = "true"
