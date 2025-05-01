@@ -102,13 +102,13 @@ pipeline {
                                 returnStatus: true
                             )
                             
-                            echo "Terraform plan exit code: ${planExitCode}"
+                            echo "Terraform plan exit code: ${planStatus}"
                             
                             // Check the exit code of terraform plan
-                            if (planStatus == '2') {
+                            if (planStatus == 2) {
                                 currentBuild.description = "Terraform: Changes Detected"
                                 env.TF_CHANGES = "true"
-                            } else if (planStatus == '0') {
+                            } else if (planStatus == 0) {
                                 echo "✅ No infrastructure changes"
                                 env.TF_CHANGES = "false"
                             } else {
