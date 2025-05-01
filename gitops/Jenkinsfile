@@ -103,13 +103,14 @@ pipeline {
                             )
                             echo "Terraform plan exit code: ${planExit}"
 
+                            
                             if (planExit == 2) {
-                                sh 'touch .tf_changes'
-                                currentBuild.description = "Terraform: Changes Detected"
+                                echo "✅ Changes detected."
+                                writeFile file: '.tf_changes', text: 'true'
                             } else if (planExit == 0) {
-                                echo "✅ No changes detected"
+                                echo "✅ No infrastructure changes."
                             } else {
-                                error "❌ Terraform plan failed with exit code ${planExit}"
+                                error "❌ Terraform plan failed (exit code ${planExit})"
                             }
                         }
                     }
