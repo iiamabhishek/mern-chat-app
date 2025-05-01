@@ -13,6 +13,10 @@ output "node_group_role_arn" {
   value       = module.eks.eks_managed_node_groups["default"].iam_role_arn
 }
 
-output "kubeconfig" {
-  value = module.eks.kubeconfig
+output "kubeconfig_details" {
+  value = {
+    endpoint                 = module.eks.cluster_endpoint
+    ca_data                  = module.eks.cluster_certificate_authority_data
+    cluster_name             = module.eks.cluster_name
+  }
 }
