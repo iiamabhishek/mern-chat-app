@@ -100,7 +100,7 @@ pipeline {
 
                             // Run terraform plan and capture exit code
                             def planStatus = sh(
-                                script: "terraform plan -detailed-exitcode -out=tfplan",
+                                script: "terraform plan -detailed-exitcode -out=tfplan || exit \$?",
                                 returnStatus: true
                             )
                             echo "Terraform plan exit code: ${planStatus}"
@@ -123,13 +123,13 @@ pipeline {
 
         stage('Terraform Apply') {
             when {
-                expression { env.TF_CHANGES == "true" }
+                expression { env.TF_CHANGES == 'true' }
             }
             steps {
                 dir('terraform') {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        // input message: "⚠️ Terraform changes detected. Proceed with apply?"
-                        sh 'terraform apply -auto-approve tfplan'
+                        input message: "⚠️ Terraform changes detected. Proceed with apply?"
+                        sh 'terraform apply --auto-approve tfplan'
                     }
                 }
             }
