@@ -95,22 +95,23 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
                         script {
-                            def planExit = sh(
+                            def exitCode = sh(
                                 script: 'terraform plan -detailed-exitcode -out=tfplan || true',
                                 returnStatus: true
                             )
-                            echo "Terraform plan exit code: ${planExit}"
 
-                            
-                            if (planExit == 2) {
+                            echo "Terraform plan exit code: ${exitCode}"
+
+                            if (exitCode == 2) {
                                 echo "✅ Changes detected."
-                                writeFile file: '.tf_changes', text: 'true'
-                            } else if (planExit == 0) {
+                                // Write flag file in root workspace (outside 'terraform' dir)
+                                writeFile file: "${env.WORKSPACE}/.tf_changes", text: 'true'
+                            } else if (exitCode == 0) {
                                 echo "✅ No infrastructure changes."
                             } else {
-                                error "❌ Terraform plan failed (exit code ${planExit})"
+                                error "❌ Terraform plan failed (exit code ${exitCode})"
                             }
                         }
                     }
@@ -118,10 +119,11 @@ pipeline {
             }
         }
 
+
         stage('Terraform Apply') {
             when {
                 expression {
-                    return fileExists('terraform/.tf_changes')
+                    return fileExists(".tf_changes")
                 }
             }
             steps {
@@ -199,7 +201,7 @@ pipeline {
     post {
         always {
             dir('terraform') {
-                sh 'rm -f .tf_changes tfplan || true'
+                sh 'rm -f .tf_changes terraform/tfplan || true'
             }
         }
     }
