@@ -5,6 +5,7 @@ pipeline {
         DOCKER_USER = 'iiamabhishek05'
         AWS_DEFAULT_REGION = 'ap-south-1'
         TF_CHANGES = 'false'  // default
+        PLAN_EXIT_CODE = ''
     }
 
     stages {
@@ -95,46 +96,36 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withAWS(credentials: 'aws-creds', region: 'us-east-1') {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
                         script {
                             def exitCode = sh(
                                 script: 'terraform plan -detailed-exitcode -out=tfplan || true',
                                 returnStatus: true
                             )
-
                             echo "Terraform plan exit code: ${exitCode}"
-
-                            if (exitCode == 2) {
-                                echo "✅ Changes detected."
-                                // Write flag file in root workspace (outside 'terraform' dir)
-                                writeFile file: "${env.WORKSPACE}/.tf_changes", text: 'true'
-                            } else if (exitCode == 0) {
-                                echo "✅ No infrastructure changes."
-                            } else {
-                                error "❌ Terraform plan failed (exit code ${exitCode})"
-                            }
+                            env.PLAN_EXIT_CODE = exitCode.toString()
                         }
                     }
                 }
             }
         }
 
-
         stage('Terraform Apply') {
             when {
                 expression {
-                    return fileExists(".tf_changes")
+                    return env.PLAN_EXIT_CODE == '2'
                 }
             }
             steps {
                 dir('terraform') {
                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        input message: "⚠️ Changes detected. Proceed with apply?"
+                        input message: "⚠️ Terraform changes detected. Proceed with apply?"
                         sh 'terraform apply -auto-approve tfplan'
                     }
                 }
             }
         }
+    
 
         // stage('Post Apply Audit') {
         //     when {
