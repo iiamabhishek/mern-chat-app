@@ -198,11 +198,11 @@ pipeline {
             }
         }
     }
-    post {
-        always {
-            dir('terraform') {
-                sh 'rm -f .tf_changes terraform/tfplan || true'
-            }
-        }
-    }
+    // post {
+    //     always {
+    //         dir('terraform') {
+    //             sh 'rm -f .tf_changes terraform/tfplan || true'
+    //         }
+    //     }
+    // }
 }
