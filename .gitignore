@@ -6,3 +6,42 @@ frontend/.dockerignore
 frontend/build/
 backend/.env
 frontend/.env
+
+# Local .terraform directories
+**/.terraform/*
+!.terraform/providers/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+crash.*.log
+
+# Sensitive variable files
+*.tfvars
+*.tfvars.json
+terraform.tfvars
+
+# Plan output
+*.tfplan
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Lock file (optional – keep if using terraform v0.14+ for reproducibility)
+.terraform.lock.hcl
+
+# VS Code settings (optional)
+.vscode/
+.vscode/settings.json
+.vscode/tasks.json
+.vscode/launch.json

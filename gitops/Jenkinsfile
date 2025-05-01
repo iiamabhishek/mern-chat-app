@@ -3,6 +3,7 @@ pipeline {
 
     environment {
         DOCKER_USER = 'iiamabhishek05'
+        AWS_DEFAULT_REGION = 'ap-south-1'
     }
 
     stages {
@@ -77,34 +78,120 @@ pipeline {
             }
         }
 
-        stage('Backup Kubernetes Resources') {
+        stage('Terraform Init & Validate') {
             steps {
-                withKubeConfig([credentialsId: 'kubeconfig']) {
-                    sh '''
-                        mkdir -p kube_backup
-                        kubectl get all -o yaml > kube_backup/kubernetes-backup-$(date +%F-%H-%M).yaml
-                        echo "✅ Kubernetes backup created!"
-                    '''
+                dir('terraform') {
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                        sh '''
+                            terraform init -backend=true
+                            terraform validate
+                        '''
+                    }
                 }
             }
         }
 
-        stage('Apply Kubernetes Manifests') {
+        stage('Terraform Plan') {
             steps {
-                script {
-                    dir('kubernetes') {
-                        withKubeConfig([credentialsId: 'kubeconfig']) {
-                            sh '''
-                                kubectl get pod
-                                kubectl apply -f .
-                                
-                                echo "✅ Kubernetes Menifest File applied successfully!"
-                            '''
+                dir('terraform') {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]]) {
+                        script {
+                            def planStatus = sh(script: '''
+                                terraform plan -detailed-exitcode -out=tfplan || echo $? > plan_result
+                                cat plan_result
+                            ''', returnStdout: true).trim()
+
+                            if (planStatus == '2') {
+                                currentBuild.description = "Terraform: Changes Detected"
+                                env.TF_CHANGES = "true"
+                            } else if (planStatus == '0') {
+                                echo "✅ No infrastructure changes"
+                                env.TF_CHANGES = "false"
+                            } else {
+                                error "❌ Terraform plan failed"
+                            }
                         }
                     }
                 }
             }
         }
+
+        stage('Terraform Apply') {
+            when {
+                expression { env.TF_CHANGES == "true" }
+            }
+            steps {
+                dir('terraform') {
+                    withCredentials([[
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'aws-creds'
+                    ]]) {
+                        input message: "⚠️ Terraform changes detected. Proceed with apply?"
+                        sh 'terraform apply -auto-approve tfplan'
+                    }
+                }
+            }
+        }
+
+        stage('Post Apply Audit') {
+            when {
+                expression { env.TF_CHANGES == "true" }
+            }
+            steps {
+                dir('terraform') {
+                    script {
+                        // Save state and resource summary
+                        sh '''
+                            terraform show -json > tfstate.json
+                            terraform state list > resource-list.txt
+                        '''
+
+                        // Archive for audit/tracking
+                        archiveArtifacts artifacts: 'tfstate.json, resource-list.txt', fingerprint: true
+
+                        // Optional: Print summary
+                        echo "✅ Terraform resources applied:"
+                        sh 'cat resource-list.txt'
+                    }
+                }
+            }
+        }
+
+
+
+
+
+        // stage('Backup Kubernetes Resources') {
+        //     steps {
+        //         withKubeConfig([credentialsId: 'kubeconfig']) {
+        //             sh '''
+        //                 mkdir -p kube_backup
+        //                 kubectl get all -o yaml > kube_backup/kubernetes-backup-$(date +%F-%H-%M).yaml
+        //                 echo "✅ Kubernetes backup created!"
+        //             '''
+        //         }
+        //     }
+        // }
+
+        // stage('Apply Kubernetes Manifests') {
+        //     steps {
+        //         script {
+        //             dir('kubernetes') {
+        //                 withKubeConfig([credentialsId: 'kubeconfig']) {
+        //                     sh '''
+        //                         kubectl get pod
+        //                         kubectl apply -f .
+                                
+        //                         echo "✅ Kubernetes Menifest File applied successfully!"
+        //                     '''
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         stage('Docker Cleanup local images') {
             steps {

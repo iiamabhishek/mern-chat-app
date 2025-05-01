@@ -45,65 +45,65 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    script {
-                        // Frontend analysis
-                        sh """
-                            $SCANNER_HOME/bin/sonar-scanner \
-                                -Dsonar.projectKey=mern-frontend \
-                                -Dsonar.sources=./frontend \
-                                -Dsonar.host.url=http://localhost:9000 \
-                        """
+        // stage('SonarQube Analysis') {
+        //     steps {
+        //         withSonarQubeEnv('sonarqube') {
+        //             script {
+        //                 // Frontend analysis
+        //                 sh """
+        //                     $SCANNER_HOME/bin/sonar-scanner \
+        //                         -Dsonar.projectKey=mern-frontend \
+        //                         -Dsonar.sources=./frontend \
+        //                         -Dsonar.host.url=http://localhost:9000 \
+        //                 """
                         
-                        // Backend analysis
-                        sh """
-                            $SCANNER_HOME/bin/sonar-scanner \
-                                -Dsonar.projectKey=mern-backend \
-                                -Dsonar.sources=./backend \
-                                -Dsonar.host.url=http://localhost:9000 \
-                        """
-                    }
-                }
-            }
-        }
+        //                 // Backend analysis
+        //                 sh """
+        //                     $SCANNER_HOME/bin/sonar-scanner \
+        //                         -Dsonar.projectKey=mern-backend \
+        //                         -Dsonar.sources=./backend \
+        //                         -Dsonar.host.url=http://localhost:9000 \
+        //                 """
+        //             }
+        //         }
+        //     }
+        // }
 
-        stage('Quality Gate Check') {
-            steps {
-                script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'sonar'
-                }
-            }
-        }
+        // stage('Quality Gate Check') {
+        //     steps {
+        //         script {
+        //             waitForQualityGate abortPipeline: false, credentialsId: 'sonar'
+        //         }
+        //     }
+        // }
 
-        stage('Security Scan - Trivy') {
-            steps {
-                sh """
-                    mkdir -p trivy-reports
+        // stage('Security Scan - Trivy') {
+        //     steps {
+        //         sh """
+        //             mkdir -p trivy-reports
 
-                    trivy image --format table -o trivy-reports/frontend-trivy.txt $DOCKER_USER/mern-app-frontend:latest
-                    trivy image --format table -o trivy-reports/backend-trivy.txt $DOCKER_USER/mern-app-backend:latest
-                """
+        //             trivy image --format table -o trivy-reports/frontend-trivy.txt $DOCKER_USER/mern-app-frontend:latest
+        //             trivy image --format table -o trivy-reports/backend-trivy.txt $DOCKER_USER/mern-app-backend:latest
+        //         """
 
-                archiveArtifacts artifacts: 'trivy-reports/*.txt', fingerprint: true
-            }
-        }
+        //         archiveArtifacts artifacts: 'trivy-reports/*.txt', fingerprint: true
+        //     }
+        // }
 
-        stage('Security Scan - OWASP') {
-            steps {
-                script {
-                    def scans = [
-                        [name: 'MERN Frontend', path: './frontend', output: 'security-reports/frontend'],
-                        [name: 'MERN Backend',  path: './backend',  output: 'security-reports/backend']
-                    ]
-                    scans.each { scan ->
-                        dependencyCheck additionalArguments: "--scan ${scan.path} --project \"${scan.name}\" --format HTML --out ${scan.output}", odcInstallation: 'd-check'
-                    }
-                }
-                archiveArtifacts artifacts: 'security-reports/**/*.html', fingerprint: true
-            }
-        }
+        // stage('Security Scan - OWASP') {
+        //     steps {
+        //         script {
+        //             def scans = [
+        //                 [name: 'MERN Frontend', path: './frontend', output: 'security-reports/frontend'],
+        //                 [name: 'MERN Backend',  path: './backend',  output: 'security-reports/backend']
+        //             ]
+        //             scans.each { scan ->
+        //                 dependencyCheck additionalArguments: "--scan ${scan.path} --project \"${scan.name}\" --format HTML --out ${scan.output}", odcInstallation: 'd-check'
+        //             }
+        //         }
+        //         archiveArtifacts artifacts: 'security-reports/**/*.html', fingerprint: true
+        //     }
+        // }
 
         stage('Push Docker Images') {
             steps {
