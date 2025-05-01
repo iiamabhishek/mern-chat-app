@@ -99,7 +99,6 @@ pipeline {
                             // Run terraform plan and capture exit code
                             def planStatus = sh(script: '''
                                 terraform plan -detailed-exitcode -out=tfplan
-                                echo $?
                             ''', returnStdout: true).trim()
                             
                             // Check the exit code of terraform plan
