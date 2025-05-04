@@ -146,7 +146,7 @@ pipeline {
                                     ]
                                 )
                                 sh 'terraform apply -auto-approve tfplan'
-                                addCommentToCommit(approval.REASON)
+                                echo "✅ Terraform applied with justification: ${approval.REASON}"
                             }
                         }
                     }
