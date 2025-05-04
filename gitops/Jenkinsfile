@@ -102,7 +102,7 @@ pipeline {
                 }
             }
         }
-s
+        
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
