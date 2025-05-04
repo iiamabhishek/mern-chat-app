@@ -89,7 +89,7 @@ pipeline {
             steps {
                 dir('terraform') {
                     script {
-                        withCredentials([awsCredentials(credentialsId: 'aws-creds')]) {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                             // Initialize Terraform
                             sh 'terraform init -backend=true -input=false -no-color'
                             def validateOutput = sh(
@@ -107,7 +107,7 @@ s
             steps {
                 dir('terraform') {
                     script {
-                        withCredentials([awsCredentials(credentialsId: 'aws-creds')]) {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                             def planCmd = """
                                 terraform plan -detailed-exitcode \\
                                 -out=tfplan \\
@@ -138,7 +138,7 @@ s
                 dir('terraform') {
                     script {
                         timeout(time: 30, unit: 'MINUTES') {
-                            withCredentials([awsCredentials(credentialsId: 'aws-creds')]) {
+                            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                                 def approval = input(
                                     message: 'Confirm Terraform changes:',
                                     parameters: [
