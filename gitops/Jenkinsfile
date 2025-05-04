@@ -4,8 +4,13 @@ pipeline {
     environment {
         DOCKER_USER = 'iiamabhishek05'
         AWS_DEFAULT_REGION = 'ap-south-1'
-        TF_CHANGES = 'false'  // default
+        TF_CHANGES = 'false'
         PLAN_EXIT_CODE = ''
+        ENV_NAME = 'prod'
+        TF_VAR_environment = "${ENV_NAME}"
+        TF_VAR_app_version = "${params.PARENT_BUILD_NUMBER}"
+        TF_VAR_aws_region = "${AWS_DEFAULT_REGION}"
+        TF_VAR_cluster_name = 'mern-cluster'
     }
 
     stages {
@@ -83,11 +88,16 @@ pipeline {
         stage('Terraform Init & Validate') {
             steps {
                 dir('terraform') {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        sh '''
-                            terraform init -backend=true
-                            terraform validate
-                        '''
+                    script {
+                        withCredentials([awsCredentials( credentialsId: 'aws-creds', accessKeyVariable: 'AWS_ACCESS_KEY_ID', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                            // Initialize Terraform
+                            sh 'terraform init -backend=true -input=false -no-color'
+                            def validateOutput = sh(
+                                script: 'terraform validate -json',
+                                returnStdout: true
+                            )
+                            echo "Validation output: ${validateOutput}"
+                        }
                     }
                 }
             }
@@ -96,14 +106,21 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 dir('terraform') {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        script {
+                    script {
+                        withCredentials([awsCredentials(credentialsId: 'aws-creds')]) {
+                            def planCmd = """
+                                terraform plan -detailed-exitcode \\
+                                -out=tfplan \\
+                                -var "environment=\${env.ENV_NAME}" \\
+                                -var "app_version=\${params.PARENT_BUILD_NUMBER}"
+                            """
                             def exitCode = sh(
-                                script: 'terraform plan -detailed-exitcode -out=tfplan || true',
+                                script: "${planCmd} || true",
                                 returnStatus: true
                             )
-                            echo "Terraform plan exit code: ${exitCode}"
-                            env.PLAN_EXIT_CODE = exitCode.toString()
+                            echo "Terraform Plan Exit Code: ${exitCode}"
+                            env.TF_CHANGES = (exitCode == 2).toString()
+                            archiveArtifacts artifacts: 'tfplan', fingerprint: true
                         }
                     }
                 }
@@ -113,14 +130,25 @@ pipeline {
         stage('Terraform Apply') {
             when {
                 expression {
-                    return env.PLAN_EXIT_CODE == '2'
+                    env.TF_CHANGES == "true" &&
+                    env.BRANCH_NAME == 'master'
                 }
             }
             steps {
                 dir('terraform') {
-                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-                        input message: "⚠️ Terraform changes detected. Proceed with apply?"
-                        sh 'terraform apply -auto-approve tfplan'
+                    script {
+                        timeout(time: 30, unit: 'MINUTES') {
+                            withCredentials([awsCredentials(credentialsId: 'aws-creds')]) {
+                                def approval = input(
+                                    message: 'Confirm Terraform changes:',
+                                    parameters: [
+                                        string(name: 'REASON', description: 'Change justification')
+                                    ]
+                                )
+                                sh 'terraform apply -auto-approve tfplan'
+                                addCommentToCommit(approval.REASON)
+                            }
+                        }
                     }
                 }
             }
@@ -189,11 +217,22 @@ pipeline {
             }
         }
     }
-    // post {
-    //     always {
-    //         dir('terraform') {
-    //             sh 'rm -f .tf_changes terraform/tfplan || true'
-    //         }
-    //     }
-    // }
+    post {
+        always {
+            dir('terraform') {
+                script {
+                    sh 'rm -f tfplan || true'
+                    sh 'terraform output -json > outputs.json'
+                    archiveArtifacts artifacts: 'outputs.json'
+                }
+            }
+        }
+        failure {
+            script {
+                emailext body: 'Terraform deployment failed. Build URL: ${BUILD_URL}',
+                        subject: 'FAILED: ${JOB_NAME}',
+                        to: 'devops@example.com'
+            }
+        }
+    }
 }
