@@ -208,31 +208,31 @@ pipeline {
         //     }
         // }
 
-        stage('Docker Cleanup local images') {
-            steps {
-                sh """
-                    docker rmi $DOCKER_USER/mern-app-frontend:v${params.PARENT_BUILD_NUMBER}
-                    docker rmi $DOCKER_USER/mern-app-backend:v${params.PARENT_BUILD_NUMBER}
-                """
-            }
-        }
+        // stage('Docker Cleanup local images') {
+        //     steps {
+        //         sh """
+        //             docker rmi $DOCKER_USER/mern-app-frontend:v${params.PARENT_BUILD_NUMBER}
+        //             docker rmi $DOCKER_USER/mern-app-backend:v${params.PARENT_BUILD_NUMBER}
+        //         """
+        //     }
+        // }
     }
-    post {
-        always {
-            dir('terraform') {
-                script {
-                    sh 'rm -f tfplan || true'
-                    sh 'terraform output -json > outputs.json'
-                    archiveArtifacts artifacts: 'outputs.json'
-                }
-            }
-        }
-        failure {
-            script {
-                emailext body: 'Terraform deployment failed. Build URL: ${BUILD_URL}',
-                        subject: 'FAILED: ${JOB_NAME}',
-                        to: 'devops@example.com'
-            }
-        }
-    }
+    // post {
+    //     always {
+    //         dir('terraform') {
+    //             script {
+    //                 sh 'rm -f tfplan || true'
+    //                 sh 'terraform output -json > outputs.json'
+    //                 archiveArtifacts artifacts: 'outputs.json'
+    //             }
+    //         }
+    //     }
+    //     failure {
+    //         script {
+    //             emailext body: 'Terraform deployment failed. Build URL: ${BUILD_URL}',
+    //                     subject: 'FAILED: ${JOB_NAME}',
+    //                     to: 'devops@example.com'
+    //         }
+    //     }
+    // }
 }
