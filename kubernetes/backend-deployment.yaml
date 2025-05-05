@@ -18,7 +18,7 @@ spec:
       #   command: ['sh', '-c', 'until nslookup mongodb://mongodb-access:27017; do echo waiting for mongo; sleep 2; done']
       containers:
       - name: backend
-        image: iiamabhishek05/mern-app-backend:v95
+        image: iiamabhishek05/mern-app-backend:v98
         ports:
         - containerPort: 5000
         envFrom:
