@@ -122,8 +122,15 @@ pipeline {
                                 script: 'terraform plan -detailed-exitcode -out=tfplan || true',
                                 returnStatus: true
                             )
-                            echo "Terraform Plan Exit Code: ${exitCode}"
-                            env.TF_CHANGES = (exitCode == 2).toString()
+                            if (planStatus == '2') {
+                                currentBuild.description = "Terraform: Changes Detected"
+                                env.TF_CHANGES = "true"
+                            } else if (planStatus == '0') {
+                                echo "✅ No infrastructure changes"
+                                env.TF_CHANGES = "false"
+                            } else {
+                                error "❌ Terraform plan failed"
+                            }
                             archiveArtifacts artifacts: 'tfplan', fingerprint: true
                         }
                     }
@@ -135,7 +142,6 @@ pipeline {
             when {
                 allOf {
                     expression { return env.TF_CHANGES == "true" }
-                    branch 'master'
                 }
             }
             steps {
