@@ -101,14 +101,6 @@ pipeline {
             }
         }
 
-        // stage('Terraform Validate') {
-        //     steps {
-        //         dir("${TF_DIR}") {
-        //             sh 'terraform validate'
-        //         }
-        //     }
-        // }
-
         stage('Terraform Plan') {
             steps {
                 dir("${TF_DIR}") {
@@ -122,7 +114,7 @@ pipeline {
                             def exitCode = sh(
                                 script: 'terraform plan -detailed-exitcode -out=tfplan || true',
                                 returnStatus: true
-                            )
+                            ).trim()
                             if (exitCode == '2') {
                                 currentBuild.description = "Terraform: Changes Detected"
                                 env.TF_CHANGES = "true"
