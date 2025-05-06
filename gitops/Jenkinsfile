@@ -147,6 +147,19 @@ pipeline {
             }
         }
 
+        stage('Terraform no changes') {
+            when {
+                expression { 
+                    return env.TF_CHANGES == "false" 
+                }
+            }
+            steps {
+                script {
+                    echo "✅ No infrastructure changes"
+                    sh 'terraform show tfplan'
+                }
+            }
+        }
         // stage('Terraform Init & Validate') {
         //     steps {
         //         dir('terraform') {
