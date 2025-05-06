@@ -122,10 +122,10 @@ pipeline {
                                 script: 'terraform plan -detailed-exitcode -out=tfplan || true',
                                 returnStatus: true
                             )
-                            if (planStatus == '2') {
+                            if (exitCode == '2') {
                                 currentBuild.description = "Terraform: Changes Detected"
                                 env.TF_CHANGES = "true"
-                            } else if (planStatus == '0') {
+                            } else if (exitCode == '0') {
                                 echo "✅ No infrastructure changes"
                                 env.TF_CHANGES = "false"
                             } else {
