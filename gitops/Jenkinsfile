@@ -101,16 +101,20 @@ pipeline {
                 dir("${TF_DIR}") {
                     script {
                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',credentialsId: 'aws-creds',accessKeyVariable: 'AWS_ACCESS_KEY_ID',secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                            // Run terraform plan and capture exit code
-                            def exitCode = sh(
-                                script: 'terraform plan -detailed-exitcode -out=tfplan || exit $?',
-                                returnStatus: true
-                            )
-
-                            echo "Terraform plan exited with code: ${exitCode} (${exitCode.getClass()})"
                             
-                            // Safely cast to int if needed
-                            exitCode = exitCode as Integer 
+                            echo "🔄 Running terraform plan..."
+                            // Run terraform plan and save the exit code to a file
+                            sh '''
+                                terraform plan -detailed-exitcode -out=tfplan
+                                echo $? > plan_exit_code.txt
+                            '''
+
+                            // Read the exit code from file
+                            def exitCodeStr = readFile('plan_exit_code.txt').trim()
+                            echo "🧪 Raw exit code: ${exitCodeStr}"
+
+                            def exitCode = exitCodeStr.toInteger()
+                            echo "🔢 Parsed exit code as Integer: ${exitCode}"
 
                             if (exitCode == 2) {
                                 currentBuild.description = "Terraform: Changes Detected"
