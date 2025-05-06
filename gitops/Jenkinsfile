@@ -85,7 +85,7 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform Init & Validate') {
             steps {
                 dir("${TF_DIR}") {
                     withCredentials([[
@@ -94,19 +94,20 @@ pipeline {
                         accessKeyVariable: 'AWS_ACCESS_KEY_ID',
                         secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                     ]]) {
-                        sh 'terraform init -input=false'
+                        sh 'terraform init -backend=true -input=false -no-color'
+                        sh 'terraform validate'
                     }
                 }
             }
         }
 
-        stage('Terraform Validate') {
-            steps {
-                dir("${TF_DIR}") {
-                    sh 'terraform validate'
-                }
-            }
-        }
+        // stage('Terraform Validate') {
+        //     steps {
+        //         dir("${TF_DIR}") {
+        //             sh 'terraform validate'
+        //         }
+        //     }
+        // }
 
         stage('Terraform Plan') {
             steps {
