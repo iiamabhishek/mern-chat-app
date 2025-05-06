@@ -4,7 +4,7 @@ pipeline {
     environment {
         DOCKER_USER = 'iiamabhishek05'
         AWS_DEFAULT_REGION = 'ap-south-1'
-        TF_CHANGES = 'false'
+        TF_CHANGES = "false"
         TF_DIR = 'terraform'
         // ENV_NAME = 'prod'
         // TF_VAR_environment = "${ENV_NAME}"
@@ -107,6 +107,8 @@ pipeline {
                             )
                             if (exitCode == 2) {
                                 currentBuild.description = "Terraform: Changes Detected"
+                                echo "⚠️  Changes detected"
+                                // Set TF_CHANGES using Groovy/Env syntax
                                 env.TF_CHANGES = "true"
                             } else if (exitCode == 0) {
                                 echo "✅ No infrastructure changes"
@@ -114,6 +116,8 @@ pipeline {
                             } else {
                                 error "❌ Terraform plan failed"
                             }
+                            
+                            // Optional: archive plan for inspection
                             archiveArtifacts artifacts: 'tfplan', fingerprint: true
                         }
                     }
@@ -147,16 +151,14 @@ pipeline {
             }
         }
 
-        stage('Terraform no changes') {
+        stage('Terraform No Changes') {
             when {
-                expression { 
-                    return env.TF_CHANGES == "false" 
-                }
+                expression { return env.TF_CHANGES == "false" }
             }
             steps {
-                script {
-                    echo "✅ No infrastructure changes"
-                    sh 'terraform show tfplan'
+                dir("${TF_DIR}") {
+                    echo "✅ No infrastructure changes to apply."
+                    sh 'terraform show tfplan || echo "No tfplan file found."'
                 }
             }
         }
