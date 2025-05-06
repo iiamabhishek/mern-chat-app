@@ -10,9 +10,9 @@ terraform {
       version = ">= 5.0"
     }
   }
-#   backend "s3" {
-#     bucket = "your-tf-state-bucket"
-#     key    = "eks/terraform.tfstate"
-#     region = "us-east-1"
-#   }
+  backend "s3" {
+    bucket = "762233757924-terraform-state"
+    key    = "eks/terraform.tfstate"
+    region = var.aws_region
+  }
 }

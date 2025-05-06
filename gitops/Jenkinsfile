@@ -88,12 +88,6 @@ pipeline {
         stage('Terraform Init & Validate') {
             steps {
                 dir("${TF_DIR}") {
-                    withCredentials([[
-                        $class: 'AmazonWebServicesCredentialsBinding',
-                        credentialsId: 'aws-creds',
-                        accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                        secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                    ]]) {
                         sh 'terraform init -backend=true -input=false -no-color'
                         sh 'terraform validate'
                     }
@@ -105,20 +99,15 @@ pipeline {
             steps {
                 dir("${TF_DIR}") {
                     script {
-                        withCredentials([[
-                            $class: 'AmazonWebServicesCredentialsBinding',
-                            credentialsId: 'aws-creds',
-                            accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                            secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                        ]]) {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',credentialsId: 'aws-creds',accessKeyVariable: 'AWS_ACCESS_KEY_ID',secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                             def exitCode = sh(
-                                script: 'terraform plan -detailed-exitcode -out=tfplan || true',
+                                script: 'terraform plan -detailed-exitcode -out=tfplan -input=false',
                                 returnStatus: true
-                            ).trim()
-                            if (exitCode == '2') {
+                            )
+                            if (exitCode == 2) {
                                 currentBuild.description = "Terraform: Changes Detected"
                                 env.TF_CHANGES = "true"
-                            } else if (exitCode == '0') {
+                            } else if (exitCode == 0) {
                                 echo "✅ No infrastructure changes"
                                 env.TF_CHANGES = "false"
                             } else {
@@ -133,19 +122,14 @@ pipeline {
 
         stage('Terraform Apply') {
             when {
-                allOf {
-                    expression { return env.TF_CHANGES == "true" }
+                expression { 
+                    return env.TF_CHANGES == "true" 
                 }
             }
             steps {
                 dir("${TF_DIR}") {
                     script {
-                        withCredentials([[
-                            $class: 'AmazonWebServicesCredentialsBinding',
-                            credentialsId: 'aws-creds',
-                            accessKeyVariable: 'AWS_ACCESS_KEY_ID',
-                            secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
-                        ]]) {
+                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',credentialsId: 'aws-creds',accessKeyVariable: 'AWS_ACCESS_KEY_ID',secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                             timeout(time: 15, unit: 'MINUTES') {
                                 def approval = input(
                                     message: 'Apply Terraform changes?',
