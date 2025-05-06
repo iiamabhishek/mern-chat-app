@@ -88,6 +88,7 @@ pipeline {
         stage('Terraform Init & Validate') {
             steps {
                 dir("${TF_DIR}") {
+                        sh 'rm -rf .terraform terraform.tfstate* tfplan'
                         sh 'terraform init -backend=true -input=false -no-color'
                         sh 'terraform validate'
                     }
@@ -101,7 +102,7 @@ pipeline {
                     script {
                         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',credentialsId: 'aws-creds',accessKeyVariable: 'AWS_ACCESS_KEY_ID',secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
                             def exitCode = sh(
-                                script: 'terraform plan -detailed-exitcode -out=tfplan -input=false',
+                                script: 'terraform plan -detailed-exitcode -out=tfplan',
                                 returnStatus: true
                             )
                             if (exitCode == 2) {
