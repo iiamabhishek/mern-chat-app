@@ -94,59 +94,20 @@ pipeline {
                 }
             }
         }
-        
+
 
         stage('Terraform Plan') {
             steps {
                 dir("${TF_DIR}") {
-                    script {
-                        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',credentialsId: 'aws-creds',accessKeyVariable: 'AWS_ACCESS_KEY_ID',secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
-                            
-                            echo "🔄 Running terraform plan..."
-                            // Run terraform plan and save the exit code to a file
-                            sh '''
-                                set +e
-                                terraform plan -detailed-exitcode -out=tfplan
-                                echo $? > plan_exit_code.txt
-                                set -e
-                            '''
-
-
-                            // Read the exit code from file
-                            def exitCodeStr = readFile('plan_exit_code.txt').trim()
-                            echo "🧪 Raw exit code: ${exitCodeStr}"
-
-                            def exitCode = exitCodeStr.toInteger()
-                            echo "🔢 Parsed exit code as Integer: ${exitCode}"
-
-                            if (exitCode == 2) {
-                                currentBuild.description = "Terraform: Changes Detected"
-                                echo "⚠️  Changes detected"
-                                // Set TF_CHANGES using Groovy/Env syntax
-                                env.TF_CHANGES = "true"
-                            } else if (exitCode == 0) {
-                                echo "✅ No infrastructure changes"
-                                env.TF_CHANGES = "false"
-                            } else {
-                                error "❌ Terraform plan failed"
-                            }
-
-                            // Optional: archive plan for inspection
-                            archiveArtifacts artifacts: 'tfplan', fingerprint: true
-                            archiveArtifacts artifacts: 'plan_exit_code.txt', fingerprint: true
-
-                        }
+                    withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+                        sh 'terraform plan -out=tfplan'
+                        archiveArtifacts artifacts: 'tfplan', fingerprint: true
                     }
                 }
             }
         }
 
         stage('Terraform Apply') {
-            when {
-                expression { 
-                    return env.TF_CHANGES == "true" 
-                }
-            }
             steps {
                 dir("${TF_DIR}") {
                     script {
@@ -166,86 +127,10 @@ pipeline {
                 }
             }
         }
+    
+        
 
-        stage('Terraform No Changes') {
-            when {
-                expression { return env.TF_CHANGES == "false" }
-            }
-            steps {
-                dir("${TF_DIR}") {
-                    echo "✅ No infrastructure changes to apply."
-                    sh 'terraform show tfplan || echo "No tfplan file found."'
-                }
-            }
-        }
-        // stage('Terraform Init & Validate') {
-        //     steps {
-        //         dir('terraform') {
-        //             script {
-        //                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-        //                     // Initialize Terraform
-        //                     sh 'terraform init -backend=true -input=false -no-color'
-        //                     def validateOutput = sh(
-        //                         script: 'terraform validate -json',
-        //                         returnStdout: true
-        //                     )
-        //                     echo "Validation output: ${validateOutput}"
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
-        // stage('Terraform Plan') {
-        //     steps {
-        //         dir('terraform') {
-        //             script {
-        //                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-        //                     def planCmd = """
-        //                         terraform plan -detailed-exitcode \\
-        //                         -out=tfplan \\
-        //                         -var "environment=\${env.ENV_NAME}" \\
-        //                         -var "app_version=\${params.PARENT_BUILD_NUMBER}"
-        //                     """
-        //                     def exitCode = sh(
-        //                         script: "${planCmd} || true",
-        //                         returnStatus: true
-        //                     )
-        //                     echo "Terraform Plan Exit Code: ${exitCode}"
-        //                     env.TF_CHANGES = (exitCode == 2).toString()
-        //                     archiveArtifacts artifacts: 'tfplan', fingerprint: true
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-
-        // stage('Terraform Apply') {
-        //     when {
-        //         expression {
-        //             env.TF_CHANGES == "true" &&
-        //             env.BRANCH_NAME == 'master'
-        //         }
-        //     }
-        //     steps {
-        //         dir('terraform') {
-        //             script {
-        //                 timeout(time: 30, unit: 'MINUTES') {
-        //                     withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-        //                         def approval = input(
-        //                             message: 'Confirm Terraform changes:',
-        //                             parameters: [
-        //                                 string(name: 'REASON', description: 'Change justification')
-        //                             ]
-        //                         )
-        //                         sh 'terraform apply -auto-approve tfplan'
-        //                         echo "✅ Terraform applied with justification: ${approval.REASON}"
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
+        
     
 
         // stage('Post Apply Audit') {
