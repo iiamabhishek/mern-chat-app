@@ -105,9 +105,12 @@ pipeline {
                             echo "🔄 Running terraform plan..."
                             // Run terraform plan and save the exit code to a file
                             sh '''
+                                set +e
                                 terraform plan -detailed-exitcode -out=tfplan
                                 echo $? > plan_exit_code.txt
+                                set -e
                             '''
+
 
                             // Read the exit code from file
                             def exitCodeStr = readFile('plan_exit_code.txt').trim()
@@ -130,6 +133,8 @@ pipeline {
 
                             // Optional: archive plan for inspection
                             archiveArtifacts artifacts: 'tfplan', fingerprint: true
+                            archiveArtifacts artifacts: 'plan_exit_code.txt', fingerprint: true
+
                         }
                     }
                 }
